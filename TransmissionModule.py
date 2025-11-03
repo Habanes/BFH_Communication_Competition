@@ -9,12 +9,15 @@ import numpy as np
 from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.LempelZivCoder import LempelZivCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
+from transmission_competition.EntropyCalculator import EntropyCalculator
 
 
 class TransmissionModule:
     def __init__(self, input_string: str, use_lempel_ziv: bool = False, per_bit_error_rate: float = 0.0):
         
         self.input_string: str = input_string
+        self.entropyCalculator = EntropyCalculator(self.input_string)
+        
         self.per_bit_error_rate = per_bit_error_rate
         
         # Initialise source coder class
@@ -60,6 +63,7 @@ class TransmissionModule:
         return (f"TransmissionModule:\n"
                 f"*****SUMMARY*******************************************************************\n\n"
                 f"**  Input String: '{self.input_string}'\n\n"
+                f"**  Entropy Calculations: {self.entropyCalculator}\n\n"                
                 f"**  Source Coded: \n'{array_to_str(self.source_coded)}'\n\n"
                 f"**  Channel Coded: \n'{array_to_str(self.channel_coded)}'\n\n"
                 f"**  Transmitted: \n'{array_to_str(self.transmitted)}'\n\n"
