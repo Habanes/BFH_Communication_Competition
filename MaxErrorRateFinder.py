@@ -38,10 +38,10 @@ if __name__ == "__main__":
     file_handle.close()
     
     # Start from 0 and work upwards to find the maximum error rate
-    current_error_rate = 0.0
+    current_error_rate = 0.0007
     confidence = 0.95
     
-    increase_per_step = 0.0001  # Start with small steps
+    increase_per_step = 0.00001  # Start with small steps
     max_error_rate = 0.0  # Track the maximum successful error rate
     
     while current_error_rate <= 1.0:

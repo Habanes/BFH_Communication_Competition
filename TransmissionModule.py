@@ -6,6 +6,7 @@ Description: Main transmission module.
 
 from typing import Optional
 import numpy as np
+import os
 from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.LempelZivCoder import LempelZivCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
@@ -13,7 +14,7 @@ from transmission_competition.EntropyCalculator import EntropyCalculator
 
 
 class TransmissionModule:
-    def __init__(self, input_string: str, use_lempel_ziv: bool = False, per_bit_error_rate: float = 0.0):
+    def __init__(self, input_string: str, use_lempel_ziv: bool = False, per_bit_error_rate: float = 0.00):
         
         self.input_string: str = input_string
         self.entropyCalculator = EntropyCalculator(self.input_string)
@@ -75,6 +76,10 @@ class TransmissionModule:
         
         
 if __name__ == "__main__":
-    input_string = "BIG"
-    myTransmissionModule = TransmissionModule(input_string=input_string, use_lempel_ziv=True)
+    file_path = os.path.join(os.path.dirname(__file__), "transmission_competition\input_text_short.txt")
+    file_handle = open(file_path, "r")
+    text = file_handle.read()
+    file_handle.close()
+
+    myTransmissionModule = TransmissionModule(input_string=text, use_lempel_ziv=True)
     print(myTransmissionModule)

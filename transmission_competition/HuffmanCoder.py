@@ -59,7 +59,7 @@ class HuffmanCoder:
             merged_freq = left_node.freq + right_node.freq
             merged_node = Node(merged_freq, left=left_node, right=right_node)
             
-            # We push the new node back to the heap
+            # We push the new node back to the heap. it is automatically sorted with to the __lt__ method.
             heapq.heappush(priority_queue, merged_node)
 
         self.tree = priority_queue[0]
@@ -202,7 +202,7 @@ class HuffmanCoder:
 if __name__ == "__main__":
     
     coder = HuffmanCoder()
-    # text = "deine mutter"
+    # text = "hallihallo"
     file_path = os.path.join(os.path.dirname(__file__), "input_text_short.txt")
     file_handle = open(file_path, "r")
     text = file_handle.read()

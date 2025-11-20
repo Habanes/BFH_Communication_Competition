@@ -29,5 +29,5 @@ class EntropyCalculator:
 
 # Example usage
 if __name__ == "__main__":
-    calc = EntropyCalculator("aabbccdd")
+    calc = EntropyCalculator("abbbc")
     print(calc)

@@ -95,16 +95,6 @@ class LempelZivCoder:
             pos += self.index_bits
         
         return dictionary, indices
-    
-    def _indices_to_binary(self, indices: List[int]) -> np.ndarray:
-        bits = [int(b) for index in indices 
-                       for b in format(index, f'0{self.index_bits}b')]
-        return np.array(bits, dtype=np.int8)
-
-    def _binary_to_indices(self, binary: np.ndarray) -> List[int]:
-        str_bits = binary.astype(str)
-        return [int("".join(str_bits[i : i + self.index_bits]), 2)
-                for i in range(0, len(binary), self.index_bits)]
 
     def decode(self, code: np.ndarray) -> str:
         # Decode the dictionary and indices from the binary message
