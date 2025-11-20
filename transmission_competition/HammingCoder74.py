@@ -35,7 +35,7 @@ class HammingCoder74:
     # Encodes a n size np array of zeroes and ones to a channel coded version
     def encode(self, data: np.ndarray) -> np.ndarray:
         
-        # Pad the array to be a multiple of 4
+        # Pad the array with zeroes to be a multiple of 4
         padded_len = (len(data) + 3) // 4 * 4
         if len(data) < padded_len:
             data = np.pad(data, (0, padded_len - len(data)), constant_values=0)
