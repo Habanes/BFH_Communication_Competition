@@ -26,7 +26,7 @@ class PSKModulator:
         return signal + noise
     
     # --- MODULATION ---
-    def QPSK_modulate(self, bits: np.ndarray):
+    def PSK_modulate(self, bits: np.ndarray):
         
         symbols = bits.reshape(-1, 2)
         phase_array = []
@@ -52,7 +52,7 @@ class PSKModulator:
         return signal
         
     # --- DEMODULATION ---
-    def QPSK_demodulate(self, signal: np.ndarray):
+    def PSK_demodulate(self, signal: np.ndarray):
         """
         Performs Coherent IQ Demodulation to recover the original bits.
         """
@@ -109,9 +109,9 @@ if __name__ == "__main__":
     
     mod = PSKModulator()
     test_bits = np.random.randint(0, 2, TOTAL_TEST_BITS)
-    modulated_signal = mod.QPSK_modulate(test_bits)
+    modulated_signal = mod.PSK_modulate(test_bits)
     noisy_signal = mod.add_awgn_noise(modulated_signal, TEST_SNR_DB)
-    demodulated_bits = mod.QPSK_demodulate(noisy_signal)
+    demodulated_bits = mod.PSK_demodulate(noisy_signal)
 
     # --- Verification ---
     errors = np.sum(np.abs(test_bits - demodulated_bits))

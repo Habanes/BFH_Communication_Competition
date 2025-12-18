@@ -51,7 +51,7 @@ class TransmissionModule:
             self.padding_added = False
 
         # Modulate the channel_coded bits
-        self.modulated_signal = self.modulator.QPSK_modulate(self.channel_coded_padded)
+        self.modulated_signal = self.modulator.PSK_modulate(self.channel_coded_padded)
         
         # Add noise if SNR is specified
         if self.snr_db is not None:
@@ -60,7 +60,7 @@ class TransmissionModule:
             self.transmitted_signal = self.modulated_signal
         
         # Demodulate the transmitted signal
-        self.demodulated_bits = self.modulator.QPSK_demodulate(self.transmitted_signal)
+        self.demodulated_bits = self.modulator.PSK_demodulate(self.transmitted_signal)
         
         # Remove padding if it was added
         if self.padding_added:

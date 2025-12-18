@@ -11,7 +11,7 @@ from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.LempelZivCoder import LempelZivCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
 from transmission_competition.EntropyCalculator import EntropyCalculator
-from transmission_competition.CSSModulation import CSSModulator  # Changed from Modulation
+from transmission_competition.CSSModulator import CSSModulator  # Changed from Modulation
 from transmission_competition.HardwareInterface import HardwareInterface
 
 
