@@ -37,15 +37,15 @@ class CSSModulator:
     
     """
 
-    def __init__(self, fs: float, T_symbol: float, f_start: float, bandwidth: float):
+    def __init__(self, fs: float = 48000.0, T_symbol: float = 0.01, f_start: float = 1000.0, bandwidth: float = 3000.0):
         """
-        :param fs: sampling frequency [Hz]
+        :param fs: sampling frequency [Hz] (default: 48000.0)
 
-        :param T_symbol: Duration of one chirp symbol [s]
+        :param T_symbol: Duration of one chirp symbol [s] (default: 0.01)
 
-        :param f_start: Start frequency of the up-chirp [Hz]
+        :param f_start: Start frequency of the up-chirp [Hz] (default: 1000.0)
 
-        :param bandwidth: Frequency spanof the chirp [Hz]
+        :param bandwidth: Frequency span of the chirp [Hz] (default: 3000.0)
         """
         self.fs = fs
         self.Ts = T_symbol
@@ -69,14 +69,14 @@ class CSSModulator:
         # Down-chirp: frequency decreases from (f-start + B) to f-start
         # Instantenous phase(t) = 2pi*[(f-start * B) t - 0.5 * k * t^2)]
         phase_down = 2 * np.pi * ((self.f_start + self.B) * t - 0.5 * k * t * t)
-        self.chip_down = np.cos(phase_down)
+        self.chirp_down = np.cos(phase_down)
 
-    def CSSModulator(self, bits: np.ndarray) -> np.ndarray:
+    def CSS_modulate(self, bits: np.ndarray) -> np.ndarray:
         """
-        Map a binary sequence to a concatenation of chip symbols.
+        Map a binary sequence to a concatenation of chirp symbols.
 
         :param bits: np.ndarray
-                     1D array (dtype can be int, bool . etc)
+                     1D array (dtype can be int, bool, etc.)
 
         Return:
         :param signal : np.ndarray
@@ -94,17 +94,17 @@ class CSSModulator:
             if b == 0:
                 signal[start_idx:end_idx] = self.chirp_up
             else:
-                signal[start_idx:end_idx] = self.chip_down
+                signal[start_idx:end_idx] = self.chirp_down
 
         return signal
 
-    def CSSDemodulator(self, rx_signal: np.ndarray) -> np.ndarray:
+    def CSS_demodulate(self, rx_signal: np.ndarray) -> np.ndarray:
         """
         :param rx_signal: np.ndarray
-                          1D array of time-domain samples (possibly noisy), conataining an integer number of chirp symbols in sequence.
+                          1D array of time-domain samples (possibly noisy), containing an integer number of chirp symbols in sequence.
 
         :return bits_hat: np.ndarray
-                          1D array of deteced bits.
+                          1D array of detected bits.
         """
 
         """
@@ -129,7 +129,7 @@ class CSSModulator:
         # Chirps energies
 
         up_energy = np.dot(self.chirp_up, self.chirp_up)
-        down_energy = np.dot(self.chip_down, self.chip_down)
+        down_energy = np.dot(self.chirp_down, self.chirp_down)
 
         for i in range(n_symbols):
             start = i * self.Ns
@@ -142,7 +142,7 @@ class CSSModulator:
             # Normalised correlation with up- and down chirp
             corr_up = np.dot(block, self.chirp_up) / np.sqrt(up_energy * block_energy)
 
-            corr_down = np.dot(block, self.chip_down) / np.sqrt(
+            corr_down = np.dot(block, self.chirp_down) / np.sqrt(
                 down_energy * block_energy
             )
 
@@ -152,32 +152,34 @@ class CSSModulator:
             else:
                 bits_hat[i] = 1
         return bits_hat
+    
+    def add_awgn_noise(self, signal: np.ndarray, snr_db: float) -> np.ndarray:
+        """
+        Adds Additive White Gaussian Noise (AWGN) to the signal based on the desired SNR_dB.
+        
+        :param signal: np.ndarray
+                        Transmit signal
 
+        :param snr_db: float
+                        Desired signal to noise ratio in dB.
 
-def addAWGN(self, signal: np.ndarray, snr_db: float) -> np.ndarray:
-    """
-    :param signal: np.ndarray
-                    Transmit signal
+        :return noisy_signal : ndarray
+                                Signal + AWGN noise
+        """
+        # Signal mean power
+        sig_power = np.mean(signal**2)
+        
+        # Linear SNR
+        snr_lin = 10.0 ** (snr_db / 10.0)
+        
+        # Noise power such that SNR = sig_power / noise_power
+        noise_power = sig_power / snr_lin
+        
+        # Generate AWGN
+        sigma = np.sqrt(noise_power)
+        noise = sigma * np.random.randn(len(signal))
 
-    :param snr_db: float
-                    Desired signalt to noise ratio in dB.
-
-    :return noisy_signal : ndarray
-                            Signal + AWGN noise
-    """
-    # Linear SNR
-    snr_lin = 10.0 ** (snr_db / 10)
-
-    # Signal mean power
-    sig_power = np.mean(signal**2)
-
-    # noise Power to thtat SNR= sig_power / noise_power
-    noise_power = sig_power + snr_lin
-
-    # AWGN
-    noise = np.sqrt(noise_power) * np.random.randn(len(signal))
-
-    return signal + noise
+        return signal + noise
 
 
 def main():
@@ -192,21 +194,16 @@ def main():
 
     # Test bits
     bits = np.array([0, 1, 0, 0, 1, 1, 0])
-    signal = css.CSSModulator(bits)
-
+    
     # Modulation
-    tx = css.CSSModulator(bits)
+    tx = css.CSS_modulate(bits)
 
-    # Füge etwas Rauschen hinzu (optional)
+    # Add AWGN noise
     snr_db = 20.0
-    snr_lin = 10 ** (snr_db / 10.0)
-    sig_power = np.mean(tx**2)
-    noise_power = sig_power / snr_lin
-    noise = np.sqrt(noise_power) * np.random.randn(len(tx))
-    rx = tx + noise
+    rx = css.add_awgn_noise(tx, snr_db)
 
     # Demodulation
-    bits_hat = css.CSSDemodulator(rx)
+    bits_hat = css.CSS_demodulate(rx)
 
     print("Original bits:    ", bits)
     print("Detected bits:    ", bits_hat)
@@ -225,17 +222,17 @@ def main():
     plt.ylabel("Amplitude")
 
     plt.subplot(3, 1, 2)
-    plt.plot(t, css.chip_down)
+    plt.plot(t, css.chirp_down)
     plt.title("Down-Chirp (frequency decreases)")
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
 
     # === Plot full modulated CSS signal ===
-    T_total = len(signal) / fs
-    t_full = np.linspace(0, T_total, len(signal), endpoint=False)
+    T_total = len(tx) / fs
+    t_full = np.linspace(0, T_total, len(tx), endpoint=False)
 
     plt.subplot(3, 1, 3)
-    plt.plot(t_full, signal)
+    plt.plot(t_full, tx)
     plt.title("Modulated CSS Signal for Bit Sequence: " + str(bits))
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
@@ -243,19 +240,26 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    ### Rausch Test
+    # === Additional test with noise ===
+    print("\n" + "="*50)
+    print("Additional noise test:")
+    print("="*50)
+    
+    fs2 = 48000.0
+    T_symbol2 = 0.005  # 5 ms per chirp
+    f_start2 = 2000.0
+    B2 = 4000.0
 
-    fs = 48000.0
-    T_symbol = 0.005  # 5 ms pro Chirp
-    f_start = 2000.0
-    B = 4000.0
+    css2 = CSSModulator(fs2, T_symbol2, f_start2, B2)
 
-    css = CSSModulator(fs, T_symbol, f_start, B)
+    test_bits = np.random.randint(0, 2, size=50)
+    tx2 = css2.CSS_modulate(test_bits)
+    rx2 = css2.add_awgn_noise(tx2, snr_db=15.0)
+    bits_hat2 = css2.CSS_demodulate(rx2)
 
-    bits = np.random.randint(0, 2, size=50)
-    bits_hat = addAWGN(css, bits, snr_db=15.0)
-
-    print("Errors:", np.sum(bits != bits_hat))
+    print(f"Total bits: {len(test_bits)}")
+    print(f"Errors: {np.sum(test_bits != bits_hat2)}")
+    print(f"BER: {np.sum(test_bits != bits_hat2) / len(test_bits):.6f}")
 
 
 if __name__ == "__main__":

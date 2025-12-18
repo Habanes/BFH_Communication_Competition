@@ -98,12 +98,12 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------
     # --- PLOTTING CONTROL VARIABLES ---
     # Set the desired length for the time-domain plots (in symbols)
-    N_SYMBOLS_TO_PLOT = 5 
+    N_SYMBOLS_TO_PLOT = 4
     # Set the maximum number of symbols for the constellation plot
     CONSTELLATION_SAMPLE_LIMIT = 400
     
     # SYSTEM PARAMETERS
-    TEST_SNR_DB = 10.0 # 10 dB Signal-to-Noise Ratio
+    TEST_SNR_DB = 2.0 # 10 dB Signal-to-Noise Ratio
     TOTAL_TEST_BITS = 800 # Total bits to send for BER calculation (400 symbols)
     # -------------------------------------------------------------------
     
