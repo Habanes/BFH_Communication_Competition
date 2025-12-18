@@ -11,7 +11,7 @@ from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.LempelZivCoder import LempelZivCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
 from transmission_competition.EntropyCalculator import EntropyCalculator
-from transmission_competition.Modulation import Modulation
+from transmission_competition.PSKModulator import PSKModulator
 
 
 class TransmissionModule:
@@ -34,7 +34,7 @@ class TransmissionModule:
         self.channelCoder = HammingCoder74()
         
         # Initialise modulation class
-        self.modulator = Modulation()
+        self.modulator = PSKModulator()
     
         # Source encode the string
         self.source_coded = self.sourceCoder.encode(self.input_string)

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
 
-class Modulation:
+class PSKModulator:
     def __init__(self):
         # Parameters needed for both modulation and demodulation
         self.Ac = 1.0           # Carrier Amplitude
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     TOTAL_TEST_BITS = 800 # Total bits to send for BER calculation (400 symbols)
     # -------------------------------------------------------------------
     
-    mod = Modulation()
+    mod = PSKModulator()
     test_bits = np.random.randint(0, 2, TOTAL_TEST_BITS)
     modulated_signal = mod.QPSK_modulate(test_bits)
     noisy_signal = mod.add_awgn_noise(modulated_signal, TEST_SNR_DB)
