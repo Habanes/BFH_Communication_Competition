@@ -1,12 +1,10 @@
 """
 Simple Audio Transmission Test - Just Synchronization
-Test sending a simple bit sequence with preamble/postamble
+Test sending exactly 20 bits with preamble detection
 """
 
 import numpy as np
 import sounddevice as sd
-import matplotlib.pyplot as plt
-from transmission_competition.Synchroniser import Synchroniser
 from transmission_competition.CSSModulator import CSSModulator
 
 
@@ -14,208 +12,137 @@ class SimpleAudioTest:
     def __init__(self):
         self.sample_rate = 48000.0
         self.symbol_rate = 4.0  # symbols per second
+        self.n_bits = 20  # Fixed number of bits to send
         
         # Modulator for converting bits to audio
         T_symbol = 1.0 / self.symbol_rate
         self.modulator = CSSModulator(fs=self.sample_rate, T_symbol=T_symbol, 
                                      f_start=1000.0, bandwidth=3000.0)
         
-        # Synchroniser with default parameters (matching notebook)
-        self.synchroniser = Synchroniser(preamble_length=1000, postamble_length=1000, 
-                                        f0=100, f1=20000, sample_rate=self.sample_rate)
+        # Preamble: chirp from 100 Hz to 20 kHz
+        self.preamble_length = 1000
+        self.f0 = 100.0
+        self.f1 = 20000.0
+        self.preamble = self._generate_chirp()
     
-    def send_test_pattern(self, bits: np.ndarray):
-        """Send a test bit pattern over audio."""
-        print(f"\n{'='*70}")
-        print("SENDER MODE")
-        print(f"{'='*70}")
-        print(f"Test bits: {bits}")
-        print(f"Number of bits: {len(bits)}")
+    def _generate_chirp(self):
+        """Generate a linear chirp signal for preamble."""
+        t = np.arange(self.preamble_length) / self.sample_rate
+        k = (self.f1 - self.f0) / (self.preamble_length / self.sample_rate)
+        phase = 2 * np.pi * (self.f0 * t + 0.5 * k * t**2)
+        chirp = np.sin(phase)
+        # Apply window
+        window = np.hanning(self.preamble_length)
+        return chirp * window
+    
+    def send(self, bits: np.ndarray):
+        """Send 20 bits over audio with preamble."""
+        assert len(bits) == self.n_bits, f"Must send exactly {self.n_bits} bits!"
         
-        # Modulate bits to audio signal
+        print(f"Sending bits: {bits}")
+        
+        # Modulate bits to audio
         modulated = self.modulator.CSS_modulate(bits)
-        print(f"Modulated signal: {len(modulated)} samples ({len(modulated)/self.sample_rate:.2f}s)")
         
-        # Add preamble and postamble
-        padded = self.synchroniser.pad(modulated)
-        print(f"Padded signal: {len(padded)} samples ({len(padded)/self.sample_rate:.2f}s)")
-        print(f"  - Preamble: {self.synchroniser.preamble_length} samples")
-        print(f"  - Data: {len(modulated)} samples")
-        print(f"  - Postamble: {self.synchroniser.postamble_length} samples")
+        # Add preamble
+        signal = np.concatenate([self.preamble, modulated])
         
-        # Normalize for playback
-        signal = padded / np.max(np.abs(padded)) * 0.8
+        # Normalize
+        signal = signal / np.max(np.abs(signal)) * 0.8
         
-        print(f"\nRecommended recording duration: {len(signal)/self.sample_rate + 2:.0f} seconds")
-        print(f"\nPress 'y' + ENTER to transmit: ", end='')
-        if input().strip().lower() != 'y':
-            print("Cancelled.")
-            return
+        duration = len(signal) / self.sample_rate
+        print(f"Signal: {len(signal)} samples ({duration:.2f}s)")
+        print(f"Record for at least {duration + 1:.0f} seconds")
         
-        print("🔊 Transmitting...")
+        # Transmit
+        print("Transmitting...")
         sd.play(signal, samplerate=self.sample_rate, blocking=True)
-        print("✓ Transmission complete!\n")
+        print("Done!\n")
     
-    def receive_test_pattern(self, duration: float = 10.0):
-        """Record and decode a test pattern."""
-        print(f"\n{'='*70}")
-        print("RECEIVER MODE")
-        print(f"{'='*70}")
-        print(f"Recording for {duration:.1f} seconds...")
-        print("Press ENTER to start recording: ", end='')
-        input()
+    def receive(self, duration: float = 10.0):
+        """Record and decode exactly 20 bits."""
+        print(f"Recording for {duration:.1f}s...")
+        input("Press ENTER to start: ")
         
-        # Record audio
+        # Record
         n_samples = int(duration * self.sample_rate)
-        print("🎤 Recording...")
         recording = sd.rec(n_samples, samplerate=self.sample_rate, channels=1, dtype='float32')
         sd.wait()
         signal = recording.flatten()
-        print(f"✓ Recorded {len(signal)} samples ({len(signal)/self.sample_rate:.1f}s)")
+        print(f"Recorded {len(signal)} samples")
         
-        # Signal statistics
-        max_amp = np.max(np.abs(signal))
-        print(f"\nSignal statistics:")
-        print(f"  Max amplitude: {max_amp:.4f}")
-        print(f"  RMS: {np.sqrt(np.mean(signal**2)):.4f}")
+        # Find preamble using autocorrelation
+        preamble_norm = self.preamble / np.linalg.norm(self.preamble)
+        correlation = np.correlate(signal, preamble_norm, mode='valid')
+        correlation = np.abs(correlation)
         
-        if max_amp < 0.01:
-            print("  ⚠️  WARNING: Signal is very quiet!")
+        preamble_idx = np.argmax(correlation)
+        max_corr = correlation[preamble_idx]
         
-        # Visualize option
-        viz = input("\nVisualize signal? (y/n): ").strip().lower()
-        if viz == 'y':
-            self.visualize(signal)
+        print(f"Preamble correlation: {max_corr:.4f}")
+        print(f"Preamble found at sample: {preamble_idx}")
         
-        # Remove preamble/postamble
-        print("\nExtracting signal...")
-        extracted, sync_info = self.synchroniser.depad(signal)
-        
-        print(f"\nSynchronization info:")
-        print(f"  Preamble correlation: {sync_info['max_preamble_corr']:.4f}")
-        print(f"  Postamble correlation: {sync_info['max_postamble_corr']:.4f}")
-        print(f"  Preamble detected at: sample {sync_info['preamble_idx']}")
-        print(f"  Postamble detected at: sample {sync_info['postamble_idx']}")
-        print(f"  Signal start: {sync_info['signal_start']}")
-        print(f"  Signal end: {sync_info['signal_end']}")
-        print(f"  Extracted length: {len(extracted)} samples")
-        
-        if sync_info['max_preamble_corr'] < 0.1:
-            print("  ⚠️  WARNING: Preamble detection is very weak!")
-        
-        if len(extracted) == 0:
-            print("✗ No signal extracted - synchronization failed!")
+        if max_corr < 0.1:
+            print("WARNING: Weak preamble detection!")
             return None
         
-        # Demodulate
-        print("\nDemodulating...")
+        # Extract signal after preamble - exactly enough for 20 bits
+        signal_start = preamble_idx + self.preamble_length
+        samples_needed = self.n_bits * self.modulator.Ns  # Use actual samples per bit from modulator
+        signal_end = signal_start + samples_needed
+        
+        if signal_end > len(signal):
+            print(f"ERROR: Not enough samples! Need {signal_end}, have {len(signal)}")
+            return None
+        
+        extracted = signal[signal_start:signal_end]
+        print(f"Extracted {len(extracted)} samples ({len(extracted)/self.modulator.Ns:.0f} bits worth)")
+        
+        # Demodulate - should give exactly 20 bits
         bits = self.modulator.CSS_demodulate(extracted)
-        print(f"Demodulated bits: {bits}")
-        print(f"Number of bits: {len(bits)}")
+        
+        print(f"Demodulated {len(bits)} bits")
+        
+        # Ensure exactly 20 bits
+        if len(bits) != self.n_bits:
+            print(f"ERROR: Got {len(bits)} bits, expected {self.n_bits}")
+            return None
         
         return bits
-    
-    def visualize(self, signal: np.ndarray):
-        """Visualize the recorded signal."""
-        fig, axes = plt.subplots(3, 1, figsize=(14, 10))
-        
-        # Full signal
-        time = np.arange(len(signal)) / self.sample_rate
-        axes[0].plot(time, signal, linewidth=0.5, alpha=0.7)
-        axes[0].set_title(f'Full Signal ({len(signal)/self.sample_rate:.2f}s)', fontweight='bold')
-        axes[0].set_xlabel('Time (s)')
-        axes[0].set_ylabel('Amplitude')
-        axes[0].grid(True, alpha=0.3)
-        
-        # Zoomed (first 0.5 seconds)
-        N_zoom = min(int(0.5 * self.sample_rate), len(signal))
-        time_zoom = np.arange(N_zoom) / self.sample_rate
-        axes[1].plot(time_zoom, signal[:N_zoom], linewidth=1.0)
-        axes[1].set_title('First 0.5 Seconds', fontweight='bold')
-        axes[1].set_xlabel('Time (s)')
-        axes[1].set_ylabel('Amplitude')
-        axes[1].grid(True, alpha=0.3)
-        
-        # Frequency spectrum
-        N_fft = min(8192, len(signal))
-        fft_result = np.fft.fft(signal[:N_fft])
-        freqs = np.fft.fftfreq(N_fft, 1/self.sample_rate)
-        magnitude = np.abs(fft_result)
-        
-        mask = (freqs >= 0) & (freqs <= 5000)
-        axes[2].plot(freqs[mask], magnitude[mask], linewidth=1.0)
-        axes[2].set_title('Frequency Spectrum (0-5000 Hz)', fontweight='bold')
-        axes[2].set_xlabel('Frequency (Hz)')
-        axes[2].set_ylabel('Magnitude')
-        axes[2].grid(True, alpha=0.3)
-        
-        # Mark expected frequencies
-        axes[2].axvline(x=self.synchroniser.f0, color='blue', linestyle='--', 
-                       alpha=0.5, label=f'f0: {self.synchroniser.f0:.0f}Hz')
-        axes[2].axvline(x=self.synchroniser.f1, color='red', linestyle='--', 
-                       alpha=0.5, label=f'f1: {self.synchroniser.f1:.0f}Hz')
-        axes[2].legend()
-        
-        plt.tight_layout()
-        plt.show()
-        
-        # Preamble detection test
-        preamble_norm = self.synchroniser.preamble / np.linalg.norm(self.synchroniser.preamble)
-        correlation = np.correlate(signal, preamble_norm, mode='valid')
-        max_idx = np.argmax(np.abs(correlation))
-        max_val = np.abs(correlation[max_idx])
-        
-        print(f"\nManual preamble detection:")
-        print(f"  Max correlation: {max_val:.4f} at sample {max_idx} ({max_idx/self.sample_rate:.2f}s)")
 
 
 def main():
     tester = SimpleAudioTest()
     
     print("\n" + "="*70)
-    print("  SIMPLE AUDIO SYNCHRONIZATION TEST")
+    print("  SIMPLE 20-BIT TRANSMISSION TEST")
     print("="*70)
-    print("\n[1] Send test pattern (20 bits)")
-    print("[2] Receive and decode")
-    print("[0] Exit\n")
+    print("\n[1] Send 20 bits")
+    print("[2] Receive 20 bits")
+    print("\n")
     
     choice = input("Select mode: ").strip()
     
+    # Test pattern
+    test_bits = np.array([0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1])
+    
     if choice == '1':
-        # Create a test pattern
-        test_bits = np.array([0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1])
-        tester.send_test_pattern(test_bits)
-        
-        print(f"\n{'='*70}")
-        print("REFERENCE PATTERN FOR RECEIVER:")
-        print(f"Expected bits: {test_bits}")
-        print(f"{'='*70}\n")
+        tester.send(test_bits)
+        print(f"Sent: {test_bits}\n")
     
     elif choice == '2':
-        duration_input = input("\nRecording duration (seconds, default=10): ").strip()
-        duration = float(duration_input) if duration_input else 10.0
+        duration = float(input("Recording duration (default=10s): ").strip() or "10")
+        received = tester.receive(duration)
         
-        received_bits = tester.receive_test_pattern(duration)
-        
-        if received_bits is not None:
-            print(f"\n{'='*70}")
-            print("RESULT:")
-            print(f"Received bits: {received_bits}")
-            print(f"{'='*70}")
+        if received is not None:
+            print(f"\nReceived: {received}")
+            print(f"Expected: {test_bits}")
             
-            # Compare with expected
-            expected = np.array([0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1])
-            if len(received_bits) == len(expected):
-                if np.array_equal(received_bits, expected):
-                    print("✓ SUCCESS! Bits match perfectly!")
-                else:
-                    errors = np.sum(received_bits != expected)
-                    print(f"✗ MISMATCH: {errors} bit errors out of {len(expected)}")
+            if np.array_equal(received, test_bits):
+                print("✓ SUCCESS! Perfect match!")
             else:
-                print(f"✗ LENGTH MISMATCH: Expected {len(expected)} bits, got {len(received_bits)}")
-    
-    else:
-        print("Goodbye!")
+                errors = np.sum(received != test_bits)
+                print(f"✗ {errors}/{len(test_bits)} bit errors")
 
 
 if __name__ == "__main__":
