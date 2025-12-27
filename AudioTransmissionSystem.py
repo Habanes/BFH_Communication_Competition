@@ -19,7 +19,7 @@ class AudioTransmissionSystem:
         self.sample_rate = 48000.0
         
         # Symbol rate - controls transmission speed (lower = slower, more robust)
-        self.symbol_rate = 10.0  # 20 symbols per second
+        self.symbol_rate = 4.0  # 20 symbols per second
         
         # Initialize components
         self.source_coder = HuffmanCoder()
