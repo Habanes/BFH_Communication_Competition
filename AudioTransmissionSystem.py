@@ -30,10 +30,10 @@ class AudioTransmissionSystem:
         self.modulator = CSSModulator(fs=self.sample_rate, T_symbol=T_symbol, 
                                      f_start=1000.0, bandwidth=3000.0)
         
-        # Synchroniser with chirp frequencies suitable for audio
-        # Longer preamble/postamble for better detection
-        self.synchroniser = Synchroniser(preamble_length=8000, postamble_length=8000, 
-                                        f0=200, f1=3000, sample_rate=self.sample_rate)
+        # Synchroniser with chirp frequencies matching notebook defaults
+        # Using wider frequency range (100-20000 Hz) for better detection
+        self.synchroniser = Synchroniser(preamble_length=1000, postamble_length=1000, 
+                                        f0=100, f1=20000, sample_rate=self.sample_rate)
         
     def send(self, text: str) -> np.ndarray:
         print(f"\n📤 Preparing to send: '{text}'")
@@ -152,9 +152,9 @@ class AudioTransmissionSystem:
         
         # Add markers for expected frequencies
         axes[2].axvline(x=self.synchroniser.f0, color='blue', linestyle='--', 
-                       alpha=0.5, label=f'Preamble start: {self.synchroniser.f0}Hz')
+                       alpha=0.5, label=f'Preamble start: {self.synchroniser.f0:.0f}Hz')
         axes[2].axvline(x=self.synchroniser.f1, color='red', linestyle='--', 
-                       alpha=0.5, label=f'Preamble end: {self.synchroniser.f1}Hz')
+                       alpha=0.5, label=f'Preamble end: {self.synchroniser.f1:.0f}Hz')
         axes[2].legend()
         
         plt.tight_layout()
