@@ -3,9 +3,19 @@ Audio Transmission System - Send/Receive text over audio
 """
 
 import numpy as np
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except ImportError:
+    print("Warning: sounddevice not available")
+    sd = None
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    print("Warning: matplotlib not available")
+    plt = None
+
 import os
-import matplotlib.pyplot as plt
 
 from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
@@ -70,6 +80,10 @@ class AudioTransmissionSystem:
             print("   ⚠️  WARNING: Very weak preamble detection!")
             print("   Possible issues: No signal received, too much noise, or wrong parameters")
         
+        if postamble_corr < 0.1:
+            print("   ⚠️  WARNING: Very weak postamble detection!")
+            print("   This might cause incorrect signal extraction")
+        
         if len(extracted) == 0:
             return "[Error: No signal extracted - synchronization failed]"
         
@@ -81,9 +95,14 @@ class AudioTransmissionSystem:
         if len(demodulated) == 0:
             return "[Error: No bits demodulated]"
         
+        # For debugging: show first few bits
+        print(f"   First 20 bits: {demodulated[:20]}")
+        
         # Trim to multiple of 7 for Hamming
+        original_length = len(demodulated)
         if len(demodulated) % 7 != 0:
             demodulated = demodulated[:(len(demodulated) // 7) * 7]
+            print(f"   Trimmed from {original_length} to {len(demodulated)} bits (multiple of 7)")
         
         if len(demodulated) == 0:
             return "[Error: Not enough bits for channel decoding]"
@@ -117,6 +136,10 @@ class AudioTransmissionSystem:
     
     def visualize(self, signal: np.ndarray, title: str = "Signal Analysis"):
         """Visualize the received signal to help debug issues."""
+        if plt is None:
+            print("Matplotlib not available for visualization")
+            return
+            
         fig, axes = plt.subplots(3, 1, figsize=(14, 10))
         
         # Time domain - full signal
@@ -187,6 +210,51 @@ class AudioTransmissionSystem:
             print(f"   ✗ Preamble NOT detected - signal may be missing or corrupted")
         print()
     
+    def test_encoding(self, text: str):
+        """Test the encoding/decoding pipeline without audio."""
+        print(f"\n🧪 Testing encoding pipeline for: '{text}'")
+        
+        # Encode
+        self.source_coder.build_encoding_map(text)
+        source_coded = self.source_coder.encode(text)
+        print(f"Source coded: {len(source_coded)} bits")
+        
+        channel_coded = self.channel_coder.encode(source_coded)
+        print(f"Channel coded: {len(channel_coded)} bits")
+        
+        # Modulate
+        modulated = self.modulator.CSS_modulate(channel_coded)
+        print(f"Modulated: {len(modulated)} samples")
+        
+        # Add sync
+        signal = self.synchroniser.pad(modulated)
+        print(f"With sync: {len(signal)} samples")
+        
+        # Simulate reception (remove sync)
+        extracted, sync_info = self.synchroniser.depad(signal)
+        print(f"Extracted: {len(extracted)} samples")
+        print(f"Sync quality - Preamble: {sync_info['max_preamble_corr']:.3f}, Postamble: {sync_info['max_postamble_corr']:.3f}")
+        
+        # Demodulate
+        demodulated = self.modulator.CSS_demodulate(extracted)
+        print(f"Demodulated: {len(demodulated)} bits")
+        
+        # Trim for Hamming
+        if len(demodulated) % 7 != 0:
+            demodulated = demodulated[:(len(demodulated) // 7) * 7]
+        print(f"After trimming: {len(demodulated)} bits")
+        
+        # Decode
+        channel_decoded = self.channel_coder.decode(demodulated)
+        print(f"Channel decoded: {len(channel_decoded)} bits")
+        
+        decoded_text = self.source_coder.decode(channel_decoded)
+        print(f"Final result: '{decoded_text}'")
+        
+        success = decoded_text == text
+        print(f"✓ Success: {success}")
+        return success
+    
     def record(self, duration: float = 10.0) -> np.ndarray:
         print(f"🎤 Recording for {duration:.1f}s...")
         print("Press ENTER to start: ", end='')
@@ -208,6 +276,7 @@ def main():
     print("="*70)
     print("\n[1] Send message")
     print("[2] Receive message")
+    print("[3] Test encoding pipeline")
     print("[0] Exit\n")
     
     choice = input("Select mode: ").strip()
@@ -259,8 +328,11 @@ def main():
                 f.write(text)
             print(f"✓ Saved to {filename}")
     
-    else:
-        print("Goodbye!")
+    elif choice == '3':
+        # TEST ENCODING
+        print("\n--- TEST ENCODING PIPELINE ---")
+        test_text = input("Enter test text (default='Hello World'): ").strip() or "Hello World"
+        system.test_encoding(test_text)
 
 
 if __name__ == "__main__":
