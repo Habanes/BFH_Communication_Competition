@@ -5,6 +5,7 @@ Audio Transmission System - Send/Receive text over audio
 import numpy as np
 import sounddevice as sd
 import os
+import matplotlib.pyplot as plt
 
 from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
@@ -18,7 +19,7 @@ class AudioTransmissionSystem:
         self.sample_rate = 48000.0
         
         # Symbol rate - controls transmission speed (lower = slower, more robust)
-        self.symbol_rate = 20.0  # 20 symbols per second
+        self.symbol_rate = 10.0  # 20 symbols per second
         
         # Initialize components
         self.source_coder = HuffmanCoder()
@@ -30,8 +31,9 @@ class AudioTransmissionSystem:
                                      f_start=1000.0, bandwidth=3000.0)
         
         # Synchroniser with chirp frequencies suitable for audio
-        self.synchroniser = Synchroniser(preamble_length=4000, postamble_length=4000, 
-                                        f0=500, f1=4000, sample_rate=self.sample_rate)
+        # Longer preamble/postamble for better detection
+        self.synchroniser = Synchroniser(preamble_length=8000, postamble_length=8000, 
+                                        f0=200, f1=3000, sample_rate=self.sample_rate)
         
     def send(self, text: str) -> np.ndarray:
         print(f"\n📤 Preparing to send: '{text}'")
@@ -46,25 +48,54 @@ class AudioTransmissionSystem:
         signal = self.synchroniser.pad(modulated)
         
         duration = len(signal) / self.sample_rate
-        print(f"✓ Signal ready ({duration:.2f}s)\n")
+        num_bits = len(channel_coded)
+        print(f"✓ Signal ready: {num_bits} bits, {duration:.2f}s duration\n")
+        print(f"   Tip: Set receiver duration to at least {duration + 2:.0f} seconds\n")
         return signal
     
     def receive(self, signal: np.ndarray) -> str:
         print("\n📥 Decoding received signal...")
+        print(f"   Received {len(signal)} samples ({len(signal)/self.sample_rate:.1f}s)")
         
         # Remove sync and demodulate
         extracted, sync_info = self.synchroniser.depad(signal)
-        print(f"   Sync quality: {sync_info['max_preamble_corr']:.2f}")
+        
+        # Check sync quality
+        preamble_corr = sync_info['max_preamble_corr']
+        postamble_corr = sync_info['max_postamble_corr']
+        print(f"   Preamble sync: {preamble_corr:.3f}")
+        print(f"   Postamble sync: {postamble_corr:.3f}")
+        
+        if preamble_corr < 0.1:
+            print("   ⚠️  WARNING: Very weak preamble detection!")
+            print("   Possible issues: No signal received, too much noise, or wrong parameters")
+        
+        if len(extracted) == 0:
+            return "[Error: No signal extracted - synchronization failed]"
+        
+        print(f"   Extracted {len(extracted)} samples")
         
         demodulated = self.modulator.CSS_demodulate(extracted)
+        print(f"   Demodulated {len(demodulated)} bits")
+        
+        if len(demodulated) == 0:
+            return "[Error: No bits demodulated]"
         
         # Trim to multiple of 7 for Hamming
         if len(demodulated) % 7 != 0:
             demodulated = demodulated[:(len(demodulated) // 7) * 7]
         
+        if len(demodulated) == 0:
+            return "[Error: Not enough bits for channel decoding]"
+        
         # Decode
         try:
             channel_decoded = self.channel_coder.decode(demodulated)
+            print(f"   Channel decoded {len(channel_decoded)} bits")
+            
+            if len(channel_decoded) == 0:
+                return "[Error: Channel decoding produced no bits]"
+            
             text = self.source_coder.decode(channel_decoded)
             print(f"✓ Decoded: '{text}'\n")
             return text
@@ -83,6 +114,78 @@ class AudioTransmissionSystem:
         print("🔊 Transmitting...")
         sd.play(signal, samplerate=self.sample_rate, blocking=True)
         print("✓ Complete\n")
+    
+    def visualize(self, signal: np.ndarray, title: str = "Signal Analysis"):
+        """Visualize the received signal to help debug issues."""
+        fig, axes = plt.subplots(3, 1, figsize=(14, 10))
+        
+        # Time domain - full signal
+        time = np.arange(len(signal)) / self.sample_rate
+        axes[0].plot(time, signal, linewidth=0.5, alpha=0.7)
+        axes[0].set_title(f'{title} - Full Signal ({len(signal)/self.sample_rate:.2f}s)', fontweight='bold')
+        axes[0].set_xlabel('Time (s)')
+        axes[0].set_ylabel('Amplitude')
+        axes[0].grid(True, alpha=0.3)
+        
+        # Time domain - zoomed in (first 2 seconds)
+        N_zoom = min(int(2 * self.sample_rate), len(signal))
+        time_zoom = np.arange(N_zoom) / self.sample_rate
+        axes[1].plot(time_zoom, signal[:N_zoom], linewidth=1.0)
+        axes[1].set_title('First 2 Seconds (zoomed)', fontweight='bold')
+        axes[1].set_xlabel('Time (s)')
+        axes[1].set_ylabel('Amplitude')
+        axes[1].grid(True, alpha=0.3)
+        
+        # Frequency domain (FFT)
+        N_fft = min(8192, len(signal))
+        fft_result = np.fft.fft(signal[:N_fft])
+        freqs = np.fft.fftfreq(N_fft, 1/self.sample_rate)
+        magnitude = np.abs(fft_result)
+        
+        # Only plot positive frequencies up to 5000 Hz
+        mask = (freqs >= 0) & (freqs <= 5000)
+        axes[2].plot(freqs[mask], magnitude[mask], linewidth=1.0)
+        axes[2].set_title('Frequency Spectrum (0-5000 Hz)', fontweight='bold')
+        axes[2].set_xlabel('Frequency (Hz)')
+        axes[2].set_ylabel('Magnitude')
+        axes[2].grid(True, alpha=0.3)
+        
+        # Add markers for expected frequencies
+        axes[2].axvline(x=self.synchroniser.f0, color='blue', linestyle='--', 
+                       alpha=0.5, label=f'Preamble start: {self.synchroniser.f0}Hz')
+        axes[2].axvline(x=self.synchroniser.f1, color='red', linestyle='--', 
+                       alpha=0.5, label=f'Preamble end: {self.synchroniser.f1}Hz')
+        axes[2].legend()
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Print signal statistics
+        print("\n📊 Signal Statistics:")
+        print(f"   Length: {len(signal)} samples ({len(signal)/self.sample_rate:.2f}s)")
+        print(f"   Max amplitude: {np.max(np.abs(signal)):.4f}")
+        print(f"   RMS: {np.sqrt(np.mean(signal**2)):.4f}")
+        print(f"   Peak-to-peak: {np.max(signal) - np.min(signal):.4f}")
+        
+        # Check if signal is too quiet
+        if np.max(np.abs(signal)) < 0.01:
+            print("   ⚠️  Signal is very quiet - check microphone volume!")
+        
+        # Try to detect preamble manually
+        preamble = self.synchroniser.preamble
+        preamble_norm = preamble / np.linalg.norm(preamble)
+        correlation = np.correlate(signal, preamble_norm, mode='valid')
+        max_corr_idx = np.argmax(np.abs(correlation))
+        max_corr_val = np.abs(correlation[max_corr_idx])
+        
+        print(f"\n🔍 Preamble Detection:")
+        print(f"   Max correlation: {max_corr_val:.4f}")
+        print(f"   Location: {max_corr_idx} samples ({max_corr_idx/self.sample_rate:.2f}s)")
+        if max_corr_val > 0.1:
+            print(f"   ✓ Preamble likely detected!")
+        else:
+            print(f"   ✗ Preamble NOT detected - signal may be missing or corrupted")
+        print()
     
     def record(self, duration: float = 10.0) -> np.ndarray:
         print(f"🎤 Recording for {duration:.1f}s...")
@@ -137,6 +240,12 @@ def main():
         duration = float(duration_input) if duration_input else 10.0
         
         recording = system.record(duration)
+        
+        # Ask if user wants to visualize first
+        viz = input("\nVisualize signal before decoding? (y/n): ").strip().lower()
+        if viz == 'y':
+            system.visualize(recording, "Received Signal")
+        
         text = system.receive(recording)
         
         print("="*70)
