@@ -72,24 +72,32 @@ class LempelZivCoder:
         pos = 0
         
         # Read number of initial characters (first 8 bits)
+        if pos + 8 > len(binary):
+            raise ValueError("Truncated data: insufficient bits for header (num_chars)")
         num_chars = int(''.join(str(int(b)) for b in binary[pos:pos+8]), 2)
         pos += 8
         
         # Read each character
         dictionary = {"": 0}  # Start with empty string at index 0
         for _ in range(num_chars):
+            if pos + 8 > len(binary):
+                raise ValueError("Truncated data: insufficient bits for dictionary characters")
             char_code = int(''.join(str(int(b)) for b in binary[pos:pos+8]), 2)
             char = chr(char_code)
             dictionary[char] = len(dictionary)
             pos += 8
         
         # Read number of indices (32 bits)
+        if pos + 32 > len(binary):
+            raise ValueError("Truncated data: insufficient bits for num_indices")
         num_indices = int(''.join(str(int(b)) for b in binary[pos:pos+32]), 2)
         pos += 32
         
         # Read exactly num_indices indices
         indices = []
         for _ in range(num_indices):
+            if pos + self.index_bits > len(binary):
+                raise ValueError(f"Truncated data: insufficient bits for indices (expected {num_indices}, got {len(indices)})")
             index = int(''.join(str(int(b)) for b in binary[pos:pos+self.index_bits]), 2)
             indices.append(index)
             pos += self.index_bits
