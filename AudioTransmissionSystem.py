@@ -15,8 +15,6 @@ except ImportError:
     print("Warning: matplotlib not available")
     plt = None
 
-import os
-
 from transmission_competition.HuffmanCoder import HuffmanCoder
 from transmission_competition.HammingCoder74 import HammingCoder74
 from transmission_competition.CSSModulator import CSSModulator
@@ -254,8 +252,6 @@ class AudioTransmissionSystem:
         success = decoded_text == text
         print(f"✓ Success: {success}")
         return success
-    
-    def record(self, duration: float = 10.0) -> np.ndarray:
         print(f"🎤 Recording for {duration:.1f}s...")
         print("Press ENTER to start: ", end='')
         input()

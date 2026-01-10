@@ -11,18 +11,18 @@ from transmission_competition.CSSModulator import CSSModulator
 class SimpleAudioTest:
     def __init__(self):
         self.sample_rate = 48000.0
-        self.symbol_rate = 4.0  # symbols per second
+        self.symbol_rate = 2.0  # symbols per second
         self.n_bits = 20  # Fixed number of bits to send
         
         # Modulator for converting bits to audio
         T_symbol = 1.0 / self.symbol_rate
         self.modulator = CSSModulator(fs=self.sample_rate, T_symbol=T_symbol, 
-                                     f_start=1000.0, bandwidth=3000.0)
+                                     f_start=800.0, bandwidth=5000.0)
         
         # Preamble: chirp from 100 Hz to 20 kHz
-        self.preamble_length = 1000
+        self.preamble_length = 2000
         self.f0 = 100.0
-        self.f1 = 20000.0
+        self.f1 = 5000.0
         self.preamble = self._generate_chirp()
     
     def _generate_chirp(self):
