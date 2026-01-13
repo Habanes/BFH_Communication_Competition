@@ -37,11 +37,11 @@ class CSSModulator:
     
     """
 
-    def __init__(self, fs: float = 48000.0, T_symbol: float = 0.01, f_start: float = 1000.0, bandwidth: float = 3000.0):
+    def __init__(self, fs: float = 48000.0, T_symbol: float = 0.1, f_start: float = 1000.0, bandwidth: float = 3000.0):
         """
         :param fs: sampling frequency [Hz] (default: 48000.0)
 
-        :param T_symbol: Duration of one chirp symbol [s] (default: 0.01)
+        :param T_symbol: Duration of one chirp symbol [s] (default: 1.0)
 
         :param f_start: Start frequency of the up-chirp [Hz] (default: 1000.0)
 
