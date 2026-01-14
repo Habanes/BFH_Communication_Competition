@@ -1,6 +1,6 @@
 """
 File: LempelZivCoder.py
-Author: Hannes Stalder
+Author: Felix Egger
 Description: Implements Lempel-Ziv compression algorithm for source coding.
 """
 

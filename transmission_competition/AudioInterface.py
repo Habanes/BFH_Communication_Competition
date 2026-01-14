@@ -1,8 +1,12 @@
+"""
+File: AudioInterface.py
+Author: Felix Egger
+Description: Implements an audio interface for reading, writing, and playing audio files.
+"""
 import numpy as np
 from scipy.io import wavfile
 import os
 
-# Optional: for playback functionality
 try:
     import sounddevice as sd
     SOUNDDEVICE_AVAILABLE = True
@@ -16,7 +20,7 @@ class AudioInterface:
         pass
 
     def write_audio(self, signal: np.ndarray, sample_rate: int, file_path: str) -> None:
-        # Normalize signal to [-1, 1] range if needed
+        # Normalize signal to [-1, 1]
         max_val = np.max(np.abs(signal))
         if max_val > 0:
             normalized = signal / max_val
@@ -46,8 +50,7 @@ class AudioInterface:
 
     def play_audio(self, file_path: str) -> None:
         if not SOUNDDEVICE_AVAILABLE:
-            raise ImportError("sounddevice package is required for audio playback. "
-                              "Install it with: pip install sounddevice")
+            raise ImportError("sounddevice not available.")
 
         sample_rate, audio_data = wavfile.read(file_path)
         sd.play(audio_data, sample_rate)
@@ -55,10 +58,9 @@ class AudioInterface:
 
     def play_signal(self, signal: np.ndarray, sample_rate: int) -> None:
         if not SOUNDDEVICE_AVAILABLE:
-            raise ImportError("sounddevice package is required for audio playback. "
-                              "Install it with: pip install sounddevice")
+            raise ImportError("sounddevice not available.")
 
-        # Normalize signal to [-1, 1] range if needed
+        # Normalize signal to [-1, 1]
         max_val = np.max(np.abs(signal))
         if max_val > 0:
             normalized = signal / max_val
