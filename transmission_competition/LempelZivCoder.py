@@ -46,7 +46,7 @@ class LempelZivCoder:
     def _encode_with_dictionary(self, full_dictionary: Dict[str, int], encoded_indices: List[int]) -> np.ndarray:
         bits = []
         
-        # Get initial dictionary (only single characters, not the compound phrases)
+        # Get initial dictionary
         initial_chars = [char for char in full_dictionary.keys() if len(char) == 1]
         
         # Encode number of initial characters (8 bits = 0-255 unique chars)
@@ -68,7 +68,6 @@ class LempelZivCoder:
         return np.array(bits, dtype=np.int8)
     
     def _decode_dictionary_and_indices(self, binary: np.ndarray) -> tuple[Dict[str, int], List[int]]:
-        """Decode the initial dictionary and indices from binary format."""
         pos = 0
         
         # Read number of initial characters (first 8 bits)
