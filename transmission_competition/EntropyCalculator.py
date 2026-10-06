@@ -1,6 +1,10 @@
 """
 File: EntropyCalculator.py
 Author: Hannes Stalder
+<<<<<<< HEAD
+=======
+Description: Calculates entropy statistics for text.
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
 """
 
 import numpy as np

@@ -1,6 +1,10 @@
 """
 File: HammingCoder74.py
 Author: Hannes Stalder
+<<<<<<< HEAD
+=======
+Description: Implements Hamming(7,4) error correction code for channel coding.
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
 """
 
 import numpy as np

@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 """
 File: PSKModulator.py
 Author: Hannes Stalder
 """
 
+=======
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
 import numpy as np
 from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
@@ -20,6 +23,12 @@ class PSKModulator:
     
     # --- NOISE METHOD ---
     def add_awgn_noise(self, signal: np.ndarray, snr_db: float) -> np.ndarray:
+<<<<<<< HEAD
+=======
+        """
+        Adds Additive White Gaussian Noise (AWGN) to the signal based on the desired SNR_dB.
+        """
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
         Ps = np.mean(np.abs(signal)**2)
         snr_linear = 10**(snr_db / 10.0)
         Pn = Ps / snr_linear
@@ -55,6 +64,12 @@ class PSKModulator:
         
     # --- DEMODULATION ---
     def PSK_demodulate(self, signal: np.ndarray):
+<<<<<<< HEAD
+=======
+        """
+        Performs Coherent IQ Demodulation to recover the original bits.
+        """
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
         # 1. GENERATE LOCAL CARRIERS
         t = np.arange(0, len(signal) / self.fs, 1/self.fs)[:len(signal)]
         LO_I = np.cos(2 * np.pi * self.fc * t)

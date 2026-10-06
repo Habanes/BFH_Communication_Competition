@@ -205,9 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+<<<<<<< HEAD
 
 
 # audio
 *.wav
 *.mp4
 *.mp3
+=======
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1

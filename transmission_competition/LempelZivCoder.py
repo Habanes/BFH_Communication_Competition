@@ -1,6 +1,11 @@
 """
 File: LempelZivCoder.py
+<<<<<<< HEAD
 Author: Felix Egger
+=======
+Author: Hannes Stalder
+Description: Implements Lempel-Ziv compression algorithm for source coding.
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
 """
 
 from typing import List, Dict
@@ -67,6 +72,10 @@ class LempelZivCoder:
         return np.array(bits, dtype=np.int8)
     
     def _decode_dictionary_and_indices(self, binary: np.ndarray) -> tuple[Dict[str, int], List[int]]:
+<<<<<<< HEAD
+=======
+        """Decode the initial dictionary and indices from binary format."""
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
         pos = 0
         
         # Read number of initial characters (first 8 bits)

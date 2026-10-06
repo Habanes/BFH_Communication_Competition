@@ -1,6 +1,10 @@
 """
 File: HuffmanCoder.py
 Author: Hannes Stalder
+<<<<<<< HEAD
+=======
+Description: Implements Huffman coding for source compression
+>>>>>>> 2094b3c899d10b09afb444b967cb62f49013b8b1
 """
 
 import heapq
